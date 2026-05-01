@@ -50,6 +50,8 @@ const LANG_DICT = {
     goal: (name) => `GOOOAL — ${name}!`,
     shotToast: 'SHOT!',
     longBall:  'LONG BALL!',
+    foul:    'FOUL!',
+    penalty: 'PENALTY!',
     replayLabel:   'REPLAY · space to skip',
     replayOverlay: 'REPLAY · SLOW MOTION',
     paused:   'PAUSED',
@@ -68,6 +70,8 @@ const LANG_DICT = {
     goal: (name) => `GOOOL — ${name}!`,
     shotToast: 'CHUTOU!',
     longBall:  'LANÇAMENTO!',
+    foul:    'FALTA!',
+    penalty: 'PÊNALTI!',
     replayLabel:   'REPLAY · espaço pula',
     replayOverlay: 'REPLAY · CÂMERA LENTA',
     paused:   'PAUSADO',
@@ -169,6 +173,17 @@ let toast = null;     // {text, color, t, max}
 const REPLAY_BUF_LEN = 180; // 3 seconds @60fps
 const replayBuf = [];
 let replay = null;          // {frames, idx, slowFactor}
+// referee + set pieces
+// Ref kit: modern FIFA-style yellow shirt, dark shorts.
+const REF_TEAM = { id:'R', name:'REF', short:'REF', color:'#f4c116', dark:'#5a4708', dir:0 };
+const referee = { x: 0, y: 0, vx: 0, vy: 0, facing: 0, alarm: 0, phaseOff: 0 };
+let whistle = null;         // {type:'foul'|'penalty', team, x, y, t}
+const PENALTY_BOX_W = 150;
+const PENALTY_BOX_H = 290;
+const PENALTY_SPOT  = 105;
+const FOUL_REL_SPEED   = 2.5;   // velocity diff threshold (px/standard-frame) to consider a foul
+const FOUL_PROBABILITY = 0.65;  // fraction of qualifying contacts the ref actually whistles
+let lastFoulAt = -Infinity;     // ms cooldown so the same skirmish doesn't fire twice
 // audio
 let audioCtx = null;
 let crowdGain = null;
@@ -302,6 +317,12 @@ function reset() {
   shake.t = 0;
   totalTime = 0;
   lastGoalAt = -Infinity;
+  whistle = null;
+  lastFoulAt = -Infinity;
+  referee.x = W/2 + 80; referee.y = H/2 - 60;
+  referee.vx = 0; referee.vy = 0; referee.facing = 0;
+  referee.alarm = 0;
+  referee.phaseOff = Math.random() * Math.PI * 2;
   resetPositions();
   buildStandsCache();
   sfx('whistle');
@@ -464,9 +485,123 @@ function resolvePlayerCollisions(all) {
         const ux = dx / d, uy = dy / d;
         a.x -= ux * push; a.y -= uy * push;
         b.x += ux * push; b.y += uy * push;
+        checkFoul(a, b);
       }
     }
   }
+}
+
+// "First contact" heuristic: when two opposing players collide,
+// the one further from the ball is challenging, the closer one is
+// the ball-handler. If the challenger arrives with high relative
+// velocity into the opponent, it's a foul.
+function checkFoul(a, b) {
+  if (a.team === b.team) return;
+  if (whistle || celebrating || replay) return;
+  if (performance.now() - lastFoulAt < 1500) return;
+
+  const relVx = a.vx - b.vx, relVy = a.vy - b.vy;
+  const relSpeed = Math.hypot(relVx, relVy);
+  if (relSpeed < FOUL_REL_SPEED) return;
+
+  const dA = dist(a.x, a.y, ball.x, ball.y);
+  const dB = dist(b.x, b.y, ball.x, ball.y);
+  // Aggressor = the one further from the ball (challenger, not ball-handler).
+  const aggressor = dA > dB ? a : b;
+  const victim    = aggressor === a ? b : a;
+  // Was the aggressor moving toward the victim? (dot product on a→b axis)
+  const dirX = victim.x - aggressor.x, dirY = victim.y - aggressor.y;
+  const len = Math.hypot(dirX, dirY) || 1;
+  const dot = (aggressor.vx * dirX + aggressor.vy * dirY) / len;
+  if (dot < 0.6) return; // not really charging into the opponent
+
+  if (Math.random() > FOUL_PROBABILITY) return;
+
+  triggerFoul(aggressor, victim);
+}
+
+function triggerFoul(aggressor, victim) {
+  lastFoulAt = performance.now();
+  const offendingTeam = aggressor.team;
+  const offendedTeam  = victim.team;
+  // Foul spot is roughly where the contact happened
+  const fx = (aggressor.x + victim.x) / 2;
+  const fy = (aggressor.y + victim.y) / 2;
+
+  // Inside offending team's own penalty box → penalty
+  const inOwnBox = (offendingTeam === TEAM_A)
+    ? (fx < FIELD.x + PENALTY_BOX_W && Math.abs(fy - H/2) < PENALTY_BOX_H/2)
+    : (fx > FIELD.x + FIELD.w - PENALTY_BOX_W && Math.abs(fy - H/2) < PENALTY_BOX_H/2);
+
+  if (inOwnBox) {
+    const dir = offendedTeam.dir;
+    const spotX = dir > 0 ? FIELD.x + FIELD.w - PENALTY_SPOT : FIELD.x + PENALTY_SPOT;
+    whistle = { type: 'penalty', team: offendedTeam, x: spotX, y: H/2, t: 1.6 };
+    showToast(T.penalty, '#ffd84d', 1.8);
+    shakeAdd(8, 0.3);
+  } else {
+    whistle = { type: 'foul', team: offendedTeam, x: fx, y: fy, t: 1.0 };
+    showToast(T.foul, '#ffe44d', 1.3);
+    shakeAdd(4, 0.2);
+  }
+  sfx('whistle');
+  referee.alarm = 1.4;
+  // freeze the world: zero velocities so nothing keeps moving during the freeze
+  ball.vx = 0; ball.vy = 0;
+  for (const p of [...teamA, ...teamB]) {
+    p.vx = 0; p.vy = 0;
+    p.kickCD = 0.6;
+  }
+}
+
+// Reposition ball + players for the set piece, then resume normal play.
+function executeSetPiece() {
+  if (!whistle) return;
+  ball.x = whistle.x; ball.y = whistle.y; ball.vx = 0; ball.vy = 0;
+  const isPK = whistle.type === 'penalty';
+  const dir = whistle.team.dir;
+
+  // Push opposing team away from the ball
+  for (const p of [...teamA, ...teamB]) {
+    if (p.team === whistle.team) continue;
+    if (p.role === 'GK') continue;
+    if (isPK) {
+      // outside the penalty box
+      const boxEdge = dir > 0 ? FIELD.x + FIELD.w - PENALTY_BOX_W - 10
+                              : FIELD.x + PENALTY_BOX_W + 10;
+      const insideBox = dir > 0 ? p.x > boxEdge : p.x < boxEdge;
+      if (insideBox && Math.abs(p.y - H/2) < PENALTY_BOX_H/2 + 10) p.x = boxEdge;
+    } else {
+      const d = dist(p.x, p.y, ball.x, ball.y);
+      if (d < 80) {
+        const dx = p.x - ball.x, dy = p.y - ball.y;
+        const nrm = Math.hypot(dx, dy) || 1;
+        p.x = ball.x + (dx / nrm) * 80;
+        p.y = ball.y + (dy / nrm) * 80;
+      }
+    }
+  }
+
+  if (isPK) {
+    // Push attacking team's outfield outside the box too, leave a single taker by the spot
+    const team = whistle.team === TEAM_A ? teamA : teamB;
+    let taker = null, takerD = Infinity;
+    for (const p of team) {
+      if (p.role === 'GK') continue;
+      const d = dist(p.x, p.y, ball.x, ball.y);
+      if (d < takerD) { takerD = d; taker = p; }
+    }
+    for (const p of team) {
+      if (p === taker || p.role === 'GK') continue;
+      const boxEdge = dir > 0 ? FIELD.x + FIELD.w - PENALTY_BOX_W - 30
+                              : FIELD.x + PENALTY_BOX_W + 30;
+      const insideBox = dir > 0 ? p.x > boxEdge : p.x < boxEdge;
+      if (insideBox && Math.abs(p.y - H/2) < PENALTY_BOX_H/2 + 30) p.x = boxEdge;
+    }
+    if (taker) { taker.x = ball.x - dir * 22; taker.y = ball.y; }
+  }
+
+  whistle = null;
 }
 
 function update(dt) {
@@ -497,6 +632,7 @@ function update(dt) {
     }
   }
   resolvePlayerCollisions([...teamA, ...teamB]);
+  updateReferee(dt);
 
   // ball
   ball.x += ball.vx * ds;
@@ -924,6 +1060,68 @@ function drawBallAt(x, y) {
   ctx.fillStyle = '#222'; ctx.fill();
 }
 
+// === Referee ===
+function updateReferee(dt) {
+  // Follow the ball at a respectful distance, on the opposite side from
+  // the play so the ref doesn't end up in shots. Clamp inside the field.
+  const off = ball.y > H/2 ? -55 : 55; // sit on the half opposite to ball-y
+  const tx = clamp(ball.x + 30, FIELD.x + 30, FIELD.x + FIELD.w - 30);
+  const ty = clamp(H/2 + off, FIELD.y + 30, FIELD.y + FIELD.h - 30);
+  const dx = tx - referee.x, dy = ty - referee.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const refSpeed = 1.7;
+  if (d > 5) {
+    referee.vx = dx / d * refSpeed;
+    referee.vy = dy / d * refSpeed;
+  } else {
+    referee.vx *= 0.6; referee.vy *= 0.6;
+  }
+  referee.x += referee.vx * ds;
+  referee.y += referee.vy * ds;
+  if (Math.hypot(referee.vx, referee.vy) > 0.3) {
+    const t = Math.atan2(referee.vy, referee.vx);
+    let diff = t - referee.facing;
+    while (diff > Math.PI) diff -= Math.PI*2;
+    while (diff < -Math.PI) diff += Math.PI*2;
+    referee.facing += diff * 0.25 * ds;
+  }
+  if (referee.alarm > 0) referee.alarm = Math.max(0, referee.alarm - dt);
+}
+
+function drawReferee() {
+  // body — use the humanoid renderer with a black/gray "kit"
+  drawHumanoid(referee.x, referee.y, REF_TEAM, '', null, false, 0,
+               referee.vx, referee.vy, referee.facing, 'REF', referee.phaseOff);
+  // alarm: little yellow flag/whistle indicator above the ref's head
+  if (referee.alarm > 0) {
+    const a = clamp(referee.alarm, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#ffe44d';
+    drawRoundRect(referee.x - 6, referee.y - 28, 12, 10, 1.5);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 9px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('!', referee.x, referee.y - 23);
+    ctx.restore();
+  }
+}
+
+function drawWhistleHint() {
+  // marker on the foul / penalty spot
+  const a = clamp(whistle.t, 0, 1);
+  ctx.save();
+  ctx.globalAlpha = 0.7 * a;
+  ctx.strokeStyle = '#ffe44d';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.arc(whistle.x, whistle.y, 18, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
 function drawParticles() {
   for (const p of particles) {
     const a = clamp(p.life / p.maxLife, 0, 1);
@@ -1113,10 +1311,12 @@ function draw() {
       drawHumanoid(p.x, p.y, p.team, p.num, p.name, p === possessor, p.squash,
                    p.vx, p.vy, p.facing, p.role, p.phaseOff);
     }
+    drawReferee();
     drawBallAt(ball.x, ball.y);
     drawParticles();
     drawHUD();
     if (celebrating) drawGoalFlash();
+    if (whistle) drawWhistleHint();
     if (paused) drawPaused();
   }
 
@@ -1167,6 +1367,14 @@ function loop() {
       if (celebrating && celebrating.t <= -1 && !replay) {
         endReplay();
       }
+    } else if (whistle) {
+      // referee blew the whistle — pause the world while the ball is
+      // repositioned for a free kick / penalty
+      whistle.t -= dt;
+      if (toast) { toast.t -= dt; if (toast.t <= 0) toast = null; }
+      if (shake.t > 0) shake.t -= dt;
+      if (referee.alarm > 0) referee.alarm -= dt;
+      if (whistle.t <= 0) executeSetPiece();
     } else if (!paused && timeLeft > 0) {
       // Advance the world by `speedMul` frames worth of game-time per real
       // frame. Sub-step when speedMul > 1 so each step is at most a full
@@ -1177,7 +1385,7 @@ function loop() {
       for (let i = 0; i < steps; i++) {
         update(stepDt);
         timeLeft -= stepDt;
-        if (celebrating || timeLeft <= 0) {
+        if (celebrating || whistle || timeLeft <= 0) {
           if (timeLeft <= 0) { timeLeft = 0; sfx('whistle'); }
           break;
         }

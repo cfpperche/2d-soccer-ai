@@ -80,6 +80,30 @@ Default `speedMul = 0.1`. Keys `+`/`-` multiply / divide by 1.5×
 (multiplicative — gives even resolution at any scale). For `speedMul > 1`
 the loop sub-steps via `Math.ceil(speedMul)` to avoid tunneling.
 
+### Referee + set pieces
+
+A `referee` object follows the ball on the opposite half (so it stays
+out of the play) and is rendered with `drawHumanoid` using a `REF_TEAM`
+kit (yellow shirt). It blows the whistle on fouls.
+
+**Foul heuristic** is "first contact": two opposing players overlap,
+the one further from the ball is the aggressor. If relative velocity
+exceeds `FOUL_REL_SPEED`, aggressor's velocity is aimed into the victim
+(dot-product gate), and `FOUL_PROBABILITY` rolls true, the ref calls a
+foul. `lastFoulAt` provides a cooldown.
+
+**Penalty rule**: foul inside the offending team's own penalty box →
+ball is placed on that team's penalty spot, the attacking team's
+nearest outfield player becomes the taker, both teams' outfielders are
+pushed outside the box.
+
+State: `whistle = { type, team, x, y, t }` joins `celebrating` and
+`replay` as a pause state. While set, the loop stops calling `update()`
+and counts down `t`. When it expires, `executeSetPiece()` repositions
+the ball and players, then clears `whistle`. Live play resumes from
+there. Detection lives in `checkFoul()` inside
+`resolvePlayerCollisions()`.
+
 ### Replay buffer
 
 `recordSnapshot()` runs every `update()` and pushes to a 180-frame ring

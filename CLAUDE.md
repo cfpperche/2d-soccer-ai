@@ -90,6 +90,32 @@ Default `speedMul = 0.1`. The `+`/`-` keys multiply/divide by 1.5×
 (multiplicative scaling — works at both 0.1× and 4×). Loop sub-steps with
 `Math.ceil(speedMul)` when speedMul > 1 to avoid tunneling.
 
+### Referee + set pieces
+
+A `referee` object follows the ball on the opposite half (so it doesn't
+get in the way) and animates with the same `drawHumanoid` renderer plus
+a `REF_TEAM` kit (FIFA-style yellow shirt). It blows the whistle on
+fouls — see `checkFoul` inside `resolvePlayerCollisions`.
+
+**Foul heuristic** ("first contact"): two opposing players overlap, the
+one further from the ball is the aggressor. If their relative velocity
+exceeds `FOUL_REL_SPEED`, the aggressor's velocity is aimed into the
+victim (dot-product gate), and `FOUL_PROBABILITY` rolls true, the ref
+calls a foul. `lastFoulAt` enforces a cooldown so the same skirmish
+doesn't whistle twice.
+
+**Penalty rule**: foul committed inside the offending team's own
+penalty box → ball goes to that team's penalty spot, attacking team's
+nearest outfield player becomes the taker, both teams' outfielders are
+pushed outside the box. Otherwise it's a free kick: ball at foul spot,
+opponents pushed 80px back, life resumes.
+
+State machine: `whistle = { type, team, x, y, t }` is the new pause
+state alongside `celebrating` and `replay`. While `whistle` is set, the
+loop stops calling `update()` and just counts down `t`. When it
+expires, `executeSetPiece()` repositions ball + players and clears
+`whistle`. The world resumes naturally from there.
+
 ### Replay system
 
 `recordSnapshot()` runs every `update()` and pushes to `replayBuf` (ring

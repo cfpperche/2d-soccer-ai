@@ -31,6 +31,7 @@ python3 -m http.server 8765
 - Goalkeeper tracks the ball's Y axis and steps out slightly when the ball comes close
 - Gradual defensive press scaled by distance
 - Player inertia (smoothed movement, no direction snap)
+- **Referee on the field**: follows the play, calls fouls when a defender charges into an opponent at high speed without having a clear shot at the ball ("first contact" heuristic). Foul in the offender's own penalty box → penalty kick.
 
 **Visual & "juice"**
 - Grass stripes, vignette, penalty boxes, penalty spot, corner arcs, nets
@@ -82,7 +83,8 @@ Conscious choice not to use Three.js or PixiJS: for a simple top-down 2D game, p
 ## Roadmap
 
 Things that would add more flavor:
-- [ ] Set pieces: corner kick, throw-in, free kick
+- [ ] Persistent yellow/red cards (player tracker, second-yellow ejection)
+- [ ] Corner kicks and throw-ins
 - [ ] Stamina and per-player skill variation
 - [ ] End-of-match possession heatmap
 - [ ] "Share clip" button (export the replay as WebM)
