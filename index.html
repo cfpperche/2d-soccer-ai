@@ -1078,12 +1078,14 @@ function updateReferee(dt) {
   }
   referee.x += referee.vx * ds;
   referee.y += referee.vy * ds;
-  if (Math.hypot(referee.vx, referee.vy) > 0.3) {
-    const t = Math.atan2(referee.vy, referee.vx);
+  // The referee always watches the ball (shuffles sideways like a real one)
+  const bx = ball.x - referee.x, by = ball.y - referee.y;
+  if (Math.hypot(bx, by) > 0.5) {
+    const t = Math.atan2(by, bx);
     let diff = t - referee.facing;
     while (diff > Math.PI) diff -= Math.PI*2;
     while (diff < -Math.PI) diff += Math.PI*2;
-    referee.facing += diff * 0.25 * ds;
+    referee.facing += diff * 0.3 * ds;
   }
   if (referee.alarm > 0) referee.alarm = Math.max(0, referee.alarm - dt);
 }
