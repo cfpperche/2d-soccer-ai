@@ -73,7 +73,8 @@ class Player {
 }
 
 let teamA, teamB, ball, scoreA, scoreB, timeLeft, kickoffTeam;
-let paused = false, celebrating = null, speedMul = 0.5, muted = false;
+let paused = false, celebrating = null, speedMul = 0.1, muted = false;
+const SPEED_DEFAULT = 0.1;
 let lastGoalAt = -Infinity; // ms timestamp, hard cooldown to prevent runaway scoring
 let totalTime = 0;          // seconds elapsed, drives walk-cycle animation
 // stats
@@ -886,8 +887,8 @@ function drawHUD() {
   // stat bar — possession + shots
   drawStatsBar();
 
-  // speed indicator (hidden at the default 0.5 pace)
-  if (speedMul !== 0.5) {
+  // speed indicator (hidden at the default pace)
+  if (Math.abs(speedMul - SPEED_DEFAULT) > 1e-4) {
     ctx.font = '12px system-ui';
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     ctx.textAlign = 'right';
@@ -1107,8 +1108,8 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
   }
   else if (e.key === 'r' || e.key === 'R') { reset(); }
-  else if (e.key === '+' || e.key === '=') { speedMul = clamp(speedMul + 0.5, 0.5, 4); }
-  else if (e.key === '-' || e.key === '_') { speedMul = clamp(speedMul - 0.5, 0.5, 4); }
+  else if (e.key === '+' || e.key === '=') { speedMul = clamp(speedMul * 1.5, 0.1, 4); }
+  else if (e.key === '-' || e.key === '_') { speedMul = clamp(speedMul / 1.5, 0.1, 4); }
   else if (e.key === 'm' || e.key === 'M') { setMuted(!muted); }
   else if (e.key === 'p' || e.key === 'P') { if (!replay) startReplay(); }
 });
