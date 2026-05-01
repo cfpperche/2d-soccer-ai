@@ -1,10 +1,12 @@
 # 2D Soccer — AI vs AI
 
+> 🎮 **[Jogar agora →](https://cfpperche.github.io/2d-soccer-ai/)**
+
 Simulador de futebol top-down 2D em **HTML + Canvas puro**, sem dependências, sem build, sem servidor. Os 22 jogadores são todos controlados por IA — você só assiste.
 
 Inspirado [neste tweet](https://twitter.com/soya_da_yoot) onde o autor pediu ao Codex pra construir um simulador 2D que jogasse sozinho "até ficar divertido de assistir".
 
-![Screenshot](screenshot.png)
+[![Screenshot](screenshot.png)](https://cfpperche.github.io/2d-soccer-ai/)
 
 ## Como rodar
 
