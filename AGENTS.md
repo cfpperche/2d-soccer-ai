@@ -123,9 +123,12 @@ freeze.
 
 ## Conventions
 
-- **Portuguese in-game text** (`GOOOL`, `LANÇAMENTO`, `CHUTOU`, `RUBRO`,
-  `AZUL`, `PAUSADO`) is deliberate flavor. Don't translate without being
-  asked. README, code comments, and commit messages stay in English.
+- **i18n**: in-game text is bilingual (en / pt-br). Auto-detected from
+  `navigator.language`; `?lang=en` or `?lang=pt` overrides. All visible
+  strings live in `LANG_DICT` near the top of the script — add new
+  strings there and reference via `T.key` (or `T.fn(arg)` for templates).
+  Keep English as the default fallback for non-pt locales.
+- Source code, comments, commit messages, README → English.
 - **No emojis** in code or files unless the user asks.
 - **Commits** include `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
   on the last line. Use the project email/name:

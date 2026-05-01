@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Soccer 2D — AI vs AI</title>
@@ -18,11 +18,67 @@
 <body>
 <h1>2D Soccer — AI vs AI · self-play</h1>
 <canvas id="c" width="1280" height="780"></canvas>
-<div class="legend"><kbd>espaço</kbd> pausa · <kbd>R</kbd> reinicia · <kbd>+</kbd>/<kbd>-</kbd> velocidade · <kbd>M</kbd> mute · <kbd>P</kbd> replay manual</div>
-<div class="credit">click ou tecle uma vez para ativar o áudio</div>
+<div class="legend"><kbd>space</kbd> pause · <kbd>R</kbd> restart · <kbd>+</kbd>/<kbd>-</kbd> speed · <kbd>M</kbd> mute · <kbd>P</kbd> manual replay</div>
+<div class="credit">click or press a key once to enable audio</div>
 
 <script>
 "use strict";
+
+// === i18n ===
+// Auto-detects browser locale; ?lang=en or ?lang=pt overrides.
+const LANG_DICT = {
+  en: {
+    docTitle: 'Soccer 2D — AI vs AI',
+    h1: '2D Soccer — AI vs AI · self-play',
+    legend: '<kbd>space</kbd> pause · <kbd>R</kbd> restart · <kbd>+</kbd>/<kbd>-</kbd> speed · <kbd>M</kbd> mute · <kbd>P</kbd> manual replay',
+    credit: 'click or press a key once to enable audio',
+    teamA_name: 'REDS',  teamA_short: 'RED',
+    teamB_name: 'BLUES', teamB_short: 'BLU',
+    goal: (name) => `GOOOAL — ${name}!`,
+    shotToast: 'SHOT!',
+    longBall:  'LONG BALL!',
+    replayLabel:   'REPLAY · space to skip',
+    replayOverlay: 'REPLAY · SLOW MOTION',
+    paused:   'PAUSED',
+    fulltime: 'FULL TIME',
+    possLeft:  (pct) => `POSS ${pct}%`,
+    possRight: (pct) => `${pct}% POSS`,
+    shots:     (a, b) => `SHOTS  ${a} — ${b}`,
+  },
+  pt: {
+    docTitle: 'Soccer 2D — IA vs IA',
+    h1: '2D Soccer — IA vs IA · self-play',
+    legend: '<kbd>espaço</kbd> pausa · <kbd>R</kbd> reinicia · <kbd>+</kbd>/<kbd>-</kbd> velocidade · <kbd>M</kbd> mute · <kbd>P</kbd> replay manual',
+    credit: 'clique ou tecle uma vez para ativar o áudio',
+    teamA_name: 'RUBRO', teamA_short: 'RUB',
+    teamB_name: 'AZUL',  teamB_short: 'AZU',
+    goal: (name) => `GOOOL — ${name}!`,
+    shotToast: 'CHUTOU!',
+    longBall:  'LANÇAMENTO!',
+    replayLabel:   'REPLAY · espaço pula',
+    replayOverlay: 'REPLAY · CÂMERA LENTA',
+    paused:   'PAUSADO',
+    fulltime: 'FIM DE JOGO',
+    possLeft:  (pct) => `POSSE ${pct}%`,
+    possRight: (pct) => `${pct}% POSSE`,
+    shots:     (a, b) => `CHUTES  ${a} — ${b}`,
+  },
+};
+function detectLang() {
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q === 'pt' || q === 'en') return q;
+  const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+  return nav.startsWith('pt') ? 'pt' : 'en';
+}
+const LANG = detectLang();
+const T = LANG_DICT[LANG];
+
+// apply HTML-side strings
+document.title = T.docTitle;
+document.documentElement.lang = LANG;
+const _h1 = document.querySelector('h1'); if (_h1) _h1.textContent = T.h1;
+const _lg = document.querySelector('.legend'); if (_lg) _lg.innerHTML = T.legend;
+const _cr = document.querySelector('.credit'); if (_cr) _cr.textContent = T.credit;
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -37,8 +93,8 @@ const GOAL_BOT = H/2 + GOAL_H/2;
 const GOAL_X_L = FIELD.x;
 const GOAL_X_R = FIELD.x + FIELD.w;
 
-const TEAM_A = { id:'A', name:'RUBRO', short:'RUB', color:'#e23636', dark:'#7a1414', dir: 1 };
-const TEAM_B = { id:'B', name:'AZUL',  short:'AZU', color:'#3578e2', dark:'#163e7a', dir:-1 };
+const TEAM_A = { id:'A', name: T.teamA_name, short: T.teamA_short, color:'#e23636', dark:'#7a1414', dir: 1 };
+const TEAM_B = { id:'B', name: T.teamB_name, short: T.teamB_short, color:'#3578e2', dark:'#163e7a', dir:-1 };
 
 const FORMATION = [
   ['GK',  0.04, 0.50],
@@ -290,7 +346,7 @@ function decideKick(p) {
       kickBall(p, goalX, targetY, 16, true);
       if (p.team === TEAM_A) shotsA++; else shotsB++;
       sfx('shot');
-      if (Math.random() < 0.35) showToast('CHUTOU!', p.team.color, 0.9);
+      if (Math.random() < 0.35) showToast(T.shotToast, p.team.color, 0.9);
       return;
     }
   }
@@ -312,7 +368,7 @@ function decideKick(p) {
     const power = clamp(d / 28 + 2, 6, 13);
     kickBall(p, best.x + best.vx * 4, best.y + best.vy * 4, power, false);
     sfx('kick');
-    if (d > 280 && Math.random() < 0.3) showToast('LANÇAMENTO!', p.team.color, 0.9);
+    if (d > 280 && Math.random() < 0.3) showToast(T.longBall, p.team.color, 0.9);
     return;
   }
 
@@ -492,7 +548,7 @@ function goalScored(team) {
 
   shakeAdd(20, 0.7);
   spawnConfetti(team === TEAM_A ? FIELD.x + FIELD.w - 60 : FIELD.x + 60, H/2, team.color);
-  showToast(`GOOOL — ${team.name}!`, team.color, 2.4);
+  showToast(T.goal(team.name), team.color, 2.4);
   sfx('cheer');
   celebrating = { team, t: 1.2, replayQueued: true };
 }
@@ -559,7 +615,7 @@ function startReplay() {
     players: f.players.map(p => ({ ...p })),
   }));
   replay = { frames, idx: 0, slowFactor: 0.45 };
-  showToast('REPLAY · espaço pula', '#ffe44d', 2.2);
+  showToast(T.replayLabel, '#ffe44d', 2.2);
   return true;
 }
 
@@ -927,13 +983,13 @@ function drawStatsBar() {
   ctx.font = '11px system-ui';
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(`POSSE ${(ratioA*100).toFixed(0)}%`, bx, by + bh + 12);
+  ctx.fillText(T.possLeft((ratioA*100).toFixed(0)), bx, by + bh + 12);
   ctx.textAlign = 'right';
-  ctx.fillText(`${((1-ratioA)*100).toFixed(0)}% POSSE`, bx + bw, by + bh + 12);
+  ctx.fillText(T.possRight(((1-ratioA)*100).toFixed(0)), bx + bw, by + bh + 12);
 
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.fillText(`CHUTES  ${shotsA} — ${shotsB}`, W/2, by + bh + 12);
+  ctx.fillText(T.shots(shotsA, shotsB), W/2, by + bh + 12);
 }
 
 function drawToast() {
@@ -971,7 +1027,7 @@ function drawReplayOverlay() {
   ctx.font = 'bold 14px system-ui';
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText('REPLAY · SLOW MOTION', 56, H - 36);
+  ctx.fillText(T.replayOverlay, 56, H - 36);
 }
 
 function roundRect(x, y, w, h, r) {
@@ -1056,7 +1112,7 @@ function drawPaused() {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 64px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(timeLeft <= 0 ? 'FIM DE JOGO' : 'PAUSADO', W/2, H/2);
+  ctx.fillText(timeLeft <= 0 ? T.fulltime : T.paused, W/2, H/2);
 }
 
 // === Loop ===

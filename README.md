@@ -97,7 +97,7 @@ PRs welcome.
 
 Built iteratively in Claude Code following the spirit of the original tweet: keep tweaking until it's actually fun to watch. The first version was 4v4, human-controlled, and visually raw. The current one is pure AI, 11v11, with layers of polish (replay, audio, particles, broadcast HUD) discovered after each match that felt too lifeless to be worth watching.
 
-The in-game text is intentionally kept in Portuguese (`GOOOL`, `LANÇAMENTO`, `RUBRO`/`AZUL`) — partly for flavor, partly because that's how it was built.
+The UI is bilingual (English / pt-br) and auto-selects based on `navigator.language`. Force a specific language with `?lang=en` or `?lang=pt` in the URL.
 
 ## License
 
