@@ -13,9 +13,22 @@
   .legend { font-size:12px; opacity:.45; }
   kbd { background:#1a1a1a; padding:2px 6px; border-radius:4px; border:1px solid #2a2a2a; font-family:inherit; font-size:11px; }
   .credit { font-size:10px; opacity:.3; margin-top:4px; }
+  .lang-switcher { position:fixed; top:14px; right:14px; display:flex; gap:2px;
+                   background:rgba(0,0,0,0.55); padding:3px; border-radius:7px;
+                   border:1px solid rgba(255,255,255,0.06); z-index:50; }
+  .lang-switcher button { background:transparent; border:none; cursor:pointer;
+                          color:rgba(255,255,255,0.45); font:600 11px/1 system-ui,sans-serif;
+                          padding:5px 9px; border-radius:5px; letter-spacing:.5px;
+                          transition:background .12s, color .12s; }
+  .lang-switcher button:hover { color:rgba(255,255,255,0.9); }
+  .lang-switcher button.active { background:rgba(255,255,255,0.14); color:#fff; }
 </style>
 </head>
 <body>
+<div class="lang-switcher" role="group" aria-label="Language">
+  <button type="button" data-lang="en">EN</button>
+  <button type="button" data-lang="pt">PT</button>
+</div>
 <h1>2D Soccer — AI vs AI · self-play</h1>
 <canvas id="c" width="1280" height="780"></canvas>
 <div class="legend"><kbd>space</kbd> pause · <kbd>R</kbd> restart · <kbd>+</kbd>/<kbd>-</kbd> speed · <kbd>M</kbd> mute · <kbd>P</kbd> manual replay</div>
@@ -79,6 +92,17 @@ document.documentElement.lang = LANG;
 const _h1 = document.querySelector('h1'); if (_h1) _h1.textContent = T.h1;
 const _lg = document.querySelector('.legend'); if (_lg) _lg.innerHTML = T.legend;
 const _cr = document.querySelector('.credit'); if (_cr) _cr.textContent = T.credit;
+
+// language switcher buttons
+document.querySelectorAll('.lang-switcher button').forEach((btn) => {
+  if (btn.dataset.lang === LANG) btn.classList.add('active');
+  btn.addEventListener('click', () => {
+    if (btn.dataset.lang === LANG) return;
+    const u = new URL(location.href);
+    u.searchParams.set('lang', btn.dataset.lang);
+    location.href = u.toString();
+  });
+});
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');

@@ -4,8 +4,6 @@
 
 A 2D top-down soccer simulator in **plain HTML + Canvas**, no dependencies, no build step, no server. All 22 players are AI-controlled — you just watch.
 
-Inspired by [this tweet](https://twitter.com/soya_da_yoot) where the author asked Codex to build a 2D simulator that would play itself "until it feels enjoyable to a user."
-
 [![Screenshot](screenshot.png)](https://cfpperche.github.io/2d-soccer-ai/)
 
 ## How to run
@@ -95,9 +93,9 @@ PRs welcome.
 
 ## Origin
 
-Built iteratively in Claude Code following the spirit of the original tweet: keep tweaking until it's actually fun to watch. The first version was 4v4, human-controlled, and visually raw. The current one is pure AI, 11v11, with layers of polish (replay, audio, particles, broadcast HUD) discovered after each match that felt too lifeless to be worth watching.
+Built iteratively — first version was 4v4, human-controlled, and visually raw. The current one is pure AI, 11v11, with layers of polish (replay, audio, particles, broadcast HUD) added after each match that felt too lifeless to be worth watching.
 
-The UI is bilingual (English / pt-br) and auto-selects based on `navigator.language`. Force a specific language with `?lang=en` or `?lang=pt` in the URL.
+The UI is bilingual (English / pt-br) and auto-selects based on `navigator.language`. Force a specific language with `?lang=en` or `?lang=pt` in the URL, or use the EN/PT switcher in the top-right corner.
 
 ## License
 
