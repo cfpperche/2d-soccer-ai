@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '=== HANDOFF.md ==='; cat HANDOFF.md 2>/dev/null || echo '(no HANDOFF.md yet)'; echo; echo '=== recent commits ==='; git log --oneline -5 2>/dev/null; echo; echo '=== uncommitted changes ==='; git status --short 2>/dev/null"
+          }
+        ]
+      }
+    ]
+  }
+}

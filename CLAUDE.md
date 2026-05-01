@@ -15,28 +15,37 @@ same: keep adding small layers of polish until each match is satisfying.
 ## File map
 
 ```
-index.html        # the entire game — ~1100 lines of HTML/CSS/JS
-README.md         # public-facing description (English, with live-demo link)
-LICENSE           # MIT
-screenshot.png    # README hero image
-.gitignore        # editor noise
-CLAUDE.md         # this file
-AGENTS.md         # vendor-neutral mirror of this file for other agentic tools
+index.html              # the entire game — ~1100 lines of HTML/CSS/JS
+README.md               # public-facing description (English, with live-demo link)
+LICENSE                 # MIT
+screenshot.png          # README hero image
+.gitignore              # editor noise + node_modules + tools/.screenshots
+CLAUDE.md               # this file
+AGENTS.md               # vendor-neutral mirror of CLAUDE.md
+HANDOFF.md              # rolling state from the previous session — read first
+package.json            # dev tooling only (Playwright); the game itself has no deps
+tools/
+  inspect.js            # Playwright + CDP diagnostic — console + runtime errors
+  inspect_fouls.js      # Polls game state to count goals / fouls / penalties / goal kicks
+  .screenshots/         # gitignored output of the inspectors
+.claude/
+  settings.json         # SessionStart hook that prints HANDOFF.md + recent commits
 ```
 
-There are no tests, no lint config, no package.json in the project itself.
-Inspection tooling lives outside the repo at `/tmp/soccer_inspect/`.
+The game has zero runtime dependencies. The `package.json` only carries
+the inspector's Playwright dep — `npm install` is optional for end users
+who just want to play.
 
 ## Run, test, deploy
 
 ```bash
 # local dev — python http server (file:// also works but blocks some APIs)
-python3 -m http.server 8765
-# → http://localhost:8765/
+npm run serve                                      # alias for python3 -m http.server 8765
 
 # inspect a running instance via Playwright + Chrome DevTools Protocol
-node /tmp/soccer_inspect/inspect.js http://localhost:8765/ 12
-node /tmp/soccer_inspect/inspect.js https://cfpperche.github.io/2d-soccer-ai/ 8
+npm run inspect                                    # short-run, console + error report
+npm run inspect:fouls                              # 30s gameplay event counter
+npm run inspect:live                               # same as inspect but against the live URL
 
 # deploy = git push to main; GitHub Pages rebuilds automatically
 git push                                           # ~30-90s rebuild
@@ -171,8 +180,13 @@ freeze.
   ```
   google-chrome --headless --disable-gpu --no-sandbox \
     --virtual-time-budget=6000 --window-size=1340,840 \
-    --screenshot=/tmp/soccer_v2/screenshot.png http://localhost:8765/
+    --screenshot=$PWD/screenshot.png http://localhost:8765/
   ```
+- **Session continuity**: read `HANDOFF.md` at the start of every session
+  (the SessionStart hook prints it). Update it before ending a session
+  with: what landed today (and the commit hash), what's
+  disabled/in-progress, and the next combined task. Keep it short — it's
+  a baton, not a journal.
 
 ## Common pitfalls
 

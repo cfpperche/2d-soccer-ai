@@ -1,0 +1,15 @@
+{
+  "name": "2d-soccer-ai",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Self-playing 2D top-down soccer simulator (single HTML file). This package.json only carries dev tooling for the inspector scripts under tools/.",
+  "scripts": {
+    "serve": "python3 -m http.server 8765",
+    "inspect": "node tools/inspect.js http://localhost:8765/",
+    "inspect:fouls": "node tools/inspect_fouls.js http://localhost:8765/",
+    "inspect:live": "node tools/inspect.js https://cfpperche.github.io/2d-soccer-ai/"
+  },
+  "devDependencies": {
+    "playwright": "^1.59.1"
+  }
+}

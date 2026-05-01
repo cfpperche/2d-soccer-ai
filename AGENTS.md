@@ -14,28 +14,37 @@ no build step, no dependencies, no external assets. Hosted on GitHub Pages.
 ## File map
 
 ```
-index.html        # the entire game (~1100 lines: HTML/CSS/JS)
-README.md         # public-facing description, English, with live-demo link
-LICENSE           # MIT
-screenshot.png    # README hero image
-CLAUDE.md         # context for Claude Code
-AGENTS.md         # this file — context for any other agent
+index.html              # the entire game (~1100 lines: HTML/CSS/JS)
+README.md               # public-facing description, English, with live-demo link
+LICENSE                 # MIT
+screenshot.png          # README hero image
+.gitignore              # editor noise + node_modules + tools/.screenshots
+CLAUDE.md               # context for Claude Code
+AGENTS.md               # this file — vendor-neutral mirror of CLAUDE.md
+HANDOFF.md              # rolling state from the previous session — read first
+package.json            # dev tooling only (Playwright); the game itself has no deps
+tools/
+  inspect.js            # Playwright + CDP diagnostic — console + runtime errors
+  inspect_fouls.js      # Polls game state to count goals / fouls / penalties / goal kicks
+  .screenshots/         # gitignored output of the inspectors
+.claude/
+  settings.json         # SessionStart hook that prints HANDOFF.md + recent commits
 ```
 
-No tests, no linter config, no `package.json` in this repo. Inspection
-tooling lives outside the project at `/tmp/soccer_inspect/` (Playwright
-script that captures console/runtime errors via Chrome DevTools Protocol).
+The game runs with zero runtime dependencies. `package.json` exists
+only for the inspector's Playwright dep; `npm install` is optional for
+anyone just wanting to play.
 
 ## Run / test / deploy
 
 ```bash
 # local dev server (file:// loads but blocks some Web APIs)
-python3 -m http.server 8765
-# → http://localhost:8765/
+npm run serve                       # python3 -m http.server 8765 → http://localhost:8765/
 
-# diagnostic via Playwright + CDP — captures console messages, runtime
-# exceptions, network failures, performance metrics, screenshot
-node /tmp/soccer_inspect/inspect.js http://localhost:8765/ 12
+# diagnostic via Playwright + CDP — captures console + runtime errors
+npm run inspect                     # short-run report
+npm run inspect:fouls               # 30s event counter (goals / fouls / goal kicks)
+npm run inspect:live                # same as inspect but against the GitHub Pages URL
 
 # deploy = git push to main; GitHub Pages rebuilds automatically (~1min)
 git push
@@ -153,6 +162,11 @@ freeze.
   strings there and reference via `T.key` (or `T.fn(arg)` for templates).
   Keep English as the default fallback for non-pt locales.
 - Source code, comments, commit messages, README → English.
+- **Session continuity**: read `HANDOFF.md` at the start of every session
+  (the SessionStart hook prints it). Update it before ending a session
+  with: what landed today (and the commit hash), what's
+  disabled/in-progress, and the next combined task. Keep it short — it's
+  a baton, not a journal.
 - **No emojis** in code or files unless the user asks.
 - **Commits** include `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
   on the last line. Use the project email/name:

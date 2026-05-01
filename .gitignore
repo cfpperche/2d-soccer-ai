@@ -3,3 +3,5 @@ node_modules/
 *.log
 .vscode/
 .idea/
+tools/.screenshots/
+.claude/settings.local.json
