@@ -175,7 +175,10 @@ let shake = { t: 0, amp: 0 };
 const particles = [];
 const ballTrail = []; // {x,y,t}
 let toast = null;     // {text, color, t, max}
-// replay
+// replay — temporarily disabled (user reported it confused the score
+// readout, will revisit). The buffer keeps recording so we can flip
+// REPLAYS_ENABLED back on without losing the feature.
+const REPLAYS_ENABLED = false;
 const REPLAY_BUF_LEN = 180; // 3 seconds @60fps
 const replayBuf = [];
 let replay = null;          // {frames, idx, slowFactor}
@@ -857,6 +860,7 @@ function recordSnapshot() {
   if (replayBuf.length > REPLAY_BUF_LEN) replayBuf.shift();
 }
 function startReplay() {
+  if (!REPLAYS_ENABLED) return false;       // disabled — see top-of-file flag
   if (replayBuf.length < 30) return false;
   const len = Math.min(REPLAY_BUF_LEN, replayBuf.length);
   const frames = replayBuf.slice(-len).map(f => ({
