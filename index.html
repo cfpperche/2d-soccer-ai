@@ -71,6 +71,7 @@ class Player {
 
 let teamA, teamB, ball, scoreA, scoreB, timeLeft, kickoffTeam;
 let paused = false, celebrating = null, speedMul = 1, muted = false;
+let lastGoalAt = -Infinity; // ms timestamp, hard cooldown to prevent runaway scoring
 // stats
 let possessionA = 0, possessionB = 0, shotsA = 0, shotsB = 0;
 // effects
@@ -449,13 +450,24 @@ function update(dt) {
 }
 
 function goalScored(team) {
+  // hard cooldown — even if celebration state gets lost, no rapid re-scoring
+  const now = performance.now();
+  if (now - lastGoalAt < 500) {
+    // still inside cooldown: just nudge ball back into play to avoid sticking
+    ball.x = W/2; ball.y = H/2; ball.vx = 0; ball.vy = 0;
+    return;
+  }
+  lastGoalAt = now;
+
   if (team === TEAM_A) scoreA++; else scoreB++;
-  ball.vx = 0; ball.vy = 0;
+  // immediately move ball out of goal so re-trigger is impossible even if
+  // celebration logic somehow gets short-circuited
+  ball.x = W/2; ball.y = H/2; ball.vx = 0; ball.vy = 0;
+
   shakeAdd(20, 0.7);
   spawnConfetti(team === TEAM_A ? FIELD.x + FIELD.w - 60 : FIELD.x + 60, H/2, team.color);
   showToast(`GOOOL — ${team.name}!`, team.color, 2.4);
   sfx('cheer');
-  // kick off replay after a brief delay
   celebrating = { team, t: 1.2, replayQueued: true };
 }
 
@@ -956,8 +968,8 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'm' || e.key === 'M') { setMuted(!muted); }
   else if (e.key === 'p' || e.key === 'P') { if (!replay) startReplay(); }
 });
-document.addEventListener('click', () => {
-  ensureAudio();
+document.addEventListener('click', ensureAudio);
+cv.addEventListener('click', () => {
   if (replay || celebrating) endReplay();
 });
 document.addEventListener('visibilitychange', () => {
