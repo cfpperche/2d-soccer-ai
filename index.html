@@ -181,8 +181,12 @@ let whistle = null;         // {type:'foul'|'penalty', team, x, y, t}
 const PENALTY_BOX_W = 150;
 const PENALTY_BOX_H = 290;
 const PENALTY_SPOT  = 105;
-const FOUL_REL_SPEED   = 2.5;   // velocity diff threshold (px/standard-frame) to consider a foul
-const FOUL_PROBABILITY = 0.65;  // fraction of qualifying contacts the ref actually whistles
+const FOUL_REL_SPEED    = 3.5;  // velocity diff threshold (px/standard-frame) to consider a foul
+const FOUL_PROBABILITY  = 0.4;  // fraction of qualifying contacts the ref actually whistles
+const FOUL_VIC_MAX_DIST = 22;   // victim must be on/very near the ball
+const FOUL_DIST_GAP     = 12;   // aggressor must be clearly behind (not 50/50)
+const FOUL_DOT_MIN      = 1.0;  // aggressor's velocity must point at the victim
+const FOUL_COOLDOWN_MS  = 2500; // re-arm time after a whistle
 let lastFoulAt = -Infinity;     // ms cooldown so the same skirmish doesn't fire twice
 // audio
 let audioCtx = null;
@@ -491,14 +495,18 @@ function resolvePlayerCollisions(all) {
   }
 }
 
-// "First contact" heuristic: when two opposing players collide,
-// the one further from the ball is challenging, the closer one is
-// the ball-handler. If the challenger arrives with high relative
-// velocity into the opponent, it's a foul.
+// Foul detection — requires a real tackle profile, not a 50/50 ball
+// contest. Goals:
+//   - one player is clearly the "ball handler" (close to ball)
+//   - the other is clearly the "challenger" (further from ball)
+//   - challenger is moving fast TOWARD the handler
+//   - and that movement carries serious relative velocity
+// Kickoff-style head-on chases (both equally far from ball) are
+// rejected because neither is the handler yet.
 function checkFoul(a, b) {
   if (a.team === b.team) return;
   if (whistle || celebrating || replay) return;
-  if (performance.now() - lastFoulAt < 1500) return;
+  if (performance.now() - lastFoulAt < FOUL_COOLDOWN_MS) return;
 
   const relVx = a.vx - b.vx, relVy = a.vy - b.vy;
   const relSpeed = Math.hypot(relVx, relVy);
@@ -506,17 +514,23 @@ function checkFoul(a, b) {
 
   const dA = dist(a.x, a.y, ball.x, ball.y);
   const dB = dist(b.x, b.y, ball.x, ball.y);
-  // Aggressor = the one further from the ball (challenger, not ball-handler).
-  const aggressor = dA > dB ? a : b;
-  const victim    = aggressor === a ? b : a;
-  // Was the aggressor moving toward the victim? (dot product on a→b axis)
+  const victim    = dA < dB ? a : b;        // closer to ball = ball-handler
+  const aggressor = dA < dB ? b : a;        // further from ball = challenger
+  const vicDist   = Math.min(dA, dB);
+  const aggDist   = Math.max(dA, dB);
+
+  // The handler must be effectively on the ball — otherwise it's not a
+  // protected play, just two people running toward a loose ball.
+  if (vicDist > FOUL_VIC_MAX_DIST) return;
+  // The challenger must be clearly behind, not contesting from the same spot.
+  if (aggDist - vicDist < FOUL_DIST_GAP) return;
+  // Challenger's velocity must aim at the handler (real tackles charge in).
   const dirX = victim.x - aggressor.x, dirY = victim.y - aggressor.y;
   const len = Math.hypot(dirX, dirY) || 1;
   const dot = (aggressor.vx * dirX + aggressor.vy * dirY) / len;
-  if (dot < 0.6) return; // not really charging into the opponent
+  if (dot < FOUL_DOT_MIN) return;
 
   if (Math.random() > FOUL_PROBABILITY) return;
-
   triggerFoul(aggressor, victim);
 }
 
