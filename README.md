@@ -1,102 +1,104 @@
 # 2D Soccer — AI vs AI
 
-> 🎮 **[Jogar agora →](https://cfpperche.github.io/2d-soccer-ai/)**
+> 🎮 **[Play now →](https://cfpperche.github.io/2d-soccer-ai/)**
 
-Simulador de futebol top-down 2D em **HTML + Canvas puro**, sem dependências, sem build, sem servidor. Os 22 jogadores são todos controlados por IA — você só assiste.
+A 2D top-down soccer simulator in **plain HTML + Canvas**, no dependencies, no build step, no server. All 22 players are AI-controlled — you just watch.
 
-Inspirado [neste tweet](https://twitter.com/soya_da_yoot) onde o autor pediu ao Codex pra construir um simulador 2D que jogasse sozinho "até ficar divertido de assistir".
+Inspired by [this tweet](https://twitter.com/soya_da_yoot) where the author asked Codex to build a 2D simulator that would play itself "until it feels enjoyable to a user."
 
 [![Screenshot](screenshot.png)](https://cfpperche.github.io/2d-soccer-ai/)
 
-## Como rodar
+## How to run
 
-Não precisa instalar nada. Tem três opções:
+Nothing to install. Three options:
 
 ```bash
-# 1) Abrir o arquivo direto
+# 1) Open the file directly
 xdg-open index.html        # linux
 open index.html            # mac
 
-# 2) Servidor local simples (recomendado)
+# 2) Simple local server (recommended)
 python3 -m http.server 8765
-# e abre http://localhost:8765
+# then open http://localhost:8765
 
-# 3) Qualquer host estático (GitHub Pages, Netlify, Vercel, etc)
+# 3) Any static host (GitHub Pages, Netlify, Vercel, etc.)
 ```
 
 ## Features
 
 **Gameplay**
-- 11 vs 11 com formação 4-3-3 (GK / 4 DEF / 3 MID / 3 FWD)
-- IA com papéis: o mais próximo da bola persegue, demais mantêm formação com bias de posse
-- Tomada de decisão: **chutar** (se em alcance e linha livre) → **passar** (procura companheiro mais avançado com lane livre) → **driblar**
-- Goleiro acompanha o eixo Y da bola e se adianta levemente quando ela se aproxima
-- Press defensivo gradual proporcional à distância
-- Inércia nos jogadores (movimento suavizado, sem snap de direção)
+- 11 vs 11 with a 4-3-3 formation (GK / 4 DEF / 3 MID / 3 FWD)
+- Role-based AI: closest player chases the ball, the rest hold formation with possession bias
+- Decision making: **shoot** (if in range and lane is clear) → **pass** (looks for the most advanced teammate with a clear lane) → **dribble**
+- Goalkeeper tracks the ball's Y axis and steps out slightly when the ball comes close
+- Gradual defensive press scaled by distance
+- Player inertia (smoothed movement, no direction snap)
 
 **Visual & "juice"**
-- Listras de grama, vinheta, áreas, marca penal, escanteios, redes
-- Estádio com 4500 pontinhos coloridos simulando torcida
-- Screen shake em gols e chutes
-- Partículas: kick-burst em toques, **confetes coloridos** no gol
-- Rastro da bola
-- Squash & stretch nos jogadores na hora do toque
-- Indicador de posse (anel amarelo no jogador com a bola)
-- Nome do jogador flutuando acima de quem tem a posse
+- Grass stripes, vignette, penalty boxes, penalty spot, corner arcs, nets
+- Stadium with 4500 colored pixels simulating a crowd
+- Screen shake on goals and shots
+- Particles: kick burst on touches, **colored confetti** on goals
+- Ball trail
+- Squash & stretch on players when the ball hits them
+- Possession indicator (yellow ring on the player with the ball)
+- Player name floating above whoever has possession
 
-**Transmissão / TV**
-- Placar central com siglas dos times em blocos coloridos
-- Barra de **posse de bola** em tempo real
-- Contador de **chutes** por time
-- Toasts de narração: `CHUTOU!`, `LANÇAMENTO!`, `GOOOL — RUBRO!`
+**Broadcast / TV feel**
+- Center scoreboard with team color blocks
+- Live **possession bar**
+- **Shot count** per team
+- Commentary toasts: `CHUTOU!`, `LANÇAMENTO!`, `GOOOL — RUBRO!` (Portuguese, kept for flavor)
 
-**Replay automático em câmera lenta**
-- Buffer de 3s gravado a cada frame
-- Todo gol dispara replay a 0.45× com scanlines + label `REPLAY · espaço pula`
-- Skip a qualquer momento com `espaço` ou click
+**Automatic slow-motion replay**
+- 3-second buffer recorded every frame
+- Every goal triggers a replay at 0.45× with scanlines and a `REPLAY · espaço pula` label
+- Skip anytime with `space` or click
 
-**Áudio procedural (Web Audio API, zero asset)**
-- Torcida ambiente em loop (ruído rosa filtrado)
-- Grito coletivo no gol
-- Apito de início/fim
-- Som de chute e finalização
+**Procedural audio (Web Audio API, zero assets)**
+- Ambient crowd loop (filtered pink noise)
+- Goal cheer
+- Whistle on kickoff/full-time
+- Kick and shot sounds
 
-## Controles
+## Controls
 
-| Tecla | Ação |
+| Key | Action |
 |-------|------|
-| `espaço` | Pausa / pula replay |
-| `R` | Reinicia partida |
-| `+` / `-` | Aumenta / diminui velocidade (0.5× a 4×) |
+| `space` | Pause / skip replay |
+| `R` | Restart match |
+| `+` / `-` | Speed up / slow down (0.5× to 4×) |
 | `M` | Mute |
-| `P` | Replay manual dos últimos 3 segundos |
-| click | Ativa áudio + pula replay |
+| `P` | Manually replay the last 3 seconds |
+| click | Unlock audio + skip replay |
 
 ## Stack
 
-- **HTML + Canvas 2D + JS vanilla** — um único arquivo `index.html`, ~750 linhas
-- Sem framework, sem build step, sem `node_modules`
-- Web Audio API pra todo o som (sem arquivos de áudio)
-- Tudo pré-renderizado em `<canvas>` — torcida cacheada num canvas offscreen
+- **HTML + Canvas 2D + vanilla JS** — single `index.html` file, ~750 lines
+- No framework, no build step, no `node_modules`
+- Web Audio API for all sound (no audio files)
+- Everything pre-rendered into `<canvas>` — the crowd is cached on an offscreen canvas
 
-Decisão consciente de não usar Three.js ou PixiJS: pra um jogo top-down 2D simples, Canvas 2D é a ferramenta mais leve e direta. O arquivo todo são ~24KB.
+Conscious choice not to use Three.js or PixiJS: for a simple top-down 2D game, plain Canvas 2D is the lightest, most direct tool. The whole thing is ~24KB.
 
 ## Roadmap
 
-Coisas que dariam mais sabor:
-- [ ] Set pieces: escanteio, lateral, cobrança de falta
-- [ ] Stamina e variação de habilidade entre jogadores
-- [ ] Heatmap de posse ao final do jogo
-- [ ] Botão "compartilhar clipe" (export do replay como WebM)
-- [ ] Customização de cores/nomes dos times
+Things that would add more flavor:
+- [ ] Set pieces: corner kick, throw-in, free kick
+- [ ] Stamina and per-player skill variation
+- [ ] End-of-match possession heatmap
+- [ ] "Share clip" button (export the replay as WebM)
+- [ ] Custom team colors/names
 - [ ] Mobile touch support
 
-PRs bem-vindos.
+PRs welcome.
 
-## Origem
+## Origin
 
-Construído iterativamente no Claude Code seguindo o espírito do tweet original: jogar até ficar divertido. A primeira versão tinha 4v4, controle humano e estética crua. A versão atual é IA pura, 11v11, com camadas de polish (replay, áudio, partículas, transmissão) descobertas a cada partida que parecia "morta" demais pra valer assistir.
+Built iteratively in Claude Code following the spirit of the original tweet: keep tweaking until it's actually fun to watch. The first version was 4v4, human-controlled, and visually raw. The current one is pure AI, 11v11, with layers of polish (replay, audio, particles, broadcast HUD) discovered after each match that felt too lifeless to be worth watching.
 
-## Licença
+The in-game text is intentionally kept in Portuguese (`GOOOL`, `LANÇAMENTO`, `RUBRO`/`AZUL`) — partly for flavor, partly because that's how it was built.
 
-MIT — usa, forka, modifica, faz o que quiser.
+## License
+
+MIT — use it, fork it, modify it, do whatever.
